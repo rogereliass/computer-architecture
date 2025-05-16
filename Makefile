@@ -1,20 +1,43 @@
+# Compiler and flags
 CC = gcc
-CFLAGS = -std=c11 -Wall -Wextra
-SRCS = src/main.c src/parser.c src/alu.c src/memory.c src/pipeline.c src/utils.c
-TARGET = simulator3
+CFLAGS = -Wall -Wextra -g -I./includes
+LDFLAGS = 
 
-all: $(TARGET)
+# Source files and directories
+SRC_DIR = src
+INCLUDE_DIR = includes
+SRC_FILES = $(wildcard $(SRC_DIR)/*.c)
+OBJ_FILES = $(SRC_FILES:.c=.o)
 
-$(TARGET): $(SRCS)
-	$(CC) $(CFLAGS) -o $@ $^
+# Executable name
+EXEC = processor
 
+# Default target
+all: $(EXEC)
+
+# Linking
+$(EXEC): $(OBJ_FILES)
+	$(CC) $(OBJ_FILES) -o $(EXEC) $(LDFLAGS)
+
+# Compilation
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Run the program
+run: $(EXEC)
+	.\$(EXEC).exe
+
+# Clean build files
 clean:
-	rm -f $(TARGET)
-	
-test: $(TARGET)
-	./$(TARGET) tests/sample1.asm > out1.txt
-	diff -u tests/expected1.txt out1.txt
-	./$(TARGET) tests/sample2.asm > out2.txt
-	diff -u tests/expected2.txt out2.txt
-	
-.PHONY: all clean test 
+	del /Q /F $(SRC_DIR)\*.o $(EXEC).exe
+
+# Show help
+help:
+	@echo "Available targets:"
+	@echo "  all    - Build the processor executable (default)"
+	@echo "  run    - Build and run the processor"
+	@echo "  clean  - Remove all build files"
+	@echo "  help   - Show this help message"
+
+# Declare phony targets
+.PHONY: all run clean help 

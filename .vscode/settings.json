@@ -1,0 +1,10 @@
+{
+    "C_Cpp.errorSquiggles": "enabled",
+    "C_Cpp.default.compilerPath": "C:/MinGW/bin/gcc.exe",
+    "files.associations": {
+        "memory.h": "c",
+        "registers.h": "c",
+        "instruction_set.h": "c",
+        "control.h": "c"
+    }
+}

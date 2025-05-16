@@ -1,320 +1,211 @@
-#include "parser.h"
-#include "memory.h"
-#include "utils.h"
+#include "../includes/parser.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 
-#define MAX_LINE_LENGTH 256
-#define MAX_LABELS 100
-
+// Operation to opcode mapping
 typedef struct {
-    char name[64];
-    uint16_t address;
-} Label;
+    const char* op;
+    uint8_t opcode;
+    int is_shift;  // Flag to identify shift instructions
+} OpcodeMap;
 
-static Label symbol_table[MAX_LABELS];
-static int label_count = 0;
+static const OpcodeMap OPCODE_TABLE[] = {
+    {"ADD",  0, 0},
+    {"SUB",  1, 0},
+    {"MUL",  2, 0},
+    {"MOVI", 3, 0},
+    {"BEQZ", 4, 0},
+    {"ANDI", 5, 0},
+    {"EOR",  6, 0},
+    {"BR",   7, 0},
+    {"SAL",  8, 1},  // Shift instruction
+    {"SAR",  9, 1},  // Shift instruction
+    {"LDR",  10, 0},
+    {"STR",  11, 0}
+};
 
-static char *trim(char *str) {
-    while (isspace(*str)) str++;
-    
-    if (*str == 0) 
-        return str;
-        
-    char *end = str + strlen(str) - 1;
-    while (end > str && isspace(*end)) end--;
-    
-    end[1] = '\0';
-    return str;
-}
+#define OPCODE_TABLE_SIZE (sizeof(OPCODE_TABLE) / sizeof(OpcodeMap))
 
-static int is_label(char *line) {
-    char *colon = strchr(line, ':');
-    return colon != NULL;
-}
-
-static void extract_label(char *line, char *label) {
-    char *colon = strchr(line, ':');
-    if (colon) {
-        int length = colon - line;
-        strncpy(label, line, length);
-        label[length] = '\0';
-        label = trim(label);
-    }
-}
-
-static int get_register_number(const char *reg_str) {
-    if (reg_str[0] == 'R' || reg_str[0] == 'r') {
-        return atoi(reg_str + 1);
-    }
-    return -1;
-}
-
-static int16_t get_immediate(const char *imm_str) {
-    return (int16_t)atoi(imm_str);
-}
-
-static int find_label_address(const char *label) {
-    for (int i = 0; i < label_count; i++) {
-        if (strcmp(symbol_table[i].name, label) == 0) {
-            return symbol_table[i].address;
+// Helper function to get opcode and instruction type
+static uint8_t getOpcode(const char* op, int* is_shift) {
+    for (size_t i = 0; i < OPCODE_TABLE_SIZE; i++) {
+        if (strcmp(op, OPCODE_TABLE[i].op) == 0) {
+            if (is_shift) *is_shift = OPCODE_TABLE[i].is_shift;
+            return OPCODE_TABLE[i].opcode;
         }
     }
-    return -1;
+    return 0xFF; // Invalid opcode
 }
 
-// First pass: collect all labels and their addresses
-static void collect_labels(FILE *fp) {
-    char line[MAX_LINE_LENGTH];
-    uint16_t addr = 0;
-    
-    while (fgets(line, MAX_LINE_LENGTH, fp)) {
-        char *l = trim(line);
-        
-        // Skip empty lines and comments
-        if (l[0] == '\0' || l[0] == ';' || l[0] == '#')
-            continue;
-            
-        if (is_label(l)) {
-            char label[64] = {0};
-            extract_label(l, label);
-            
-            // Store the label and its address
-            strcpy(symbol_table[label_count].name, label);
-            symbol_table[label_count].address = addr;
-            label_count++;
-            
-            // Check if there's an instruction after the label
-            char *instr = strchr(l, ':');
-            if (instr) {
-                instr++; // Skip the colon
-                instr = trim(instr);
-                
-                // If there's an instruction after the label, increment addr
-                if (instr[0] != '\0' && instr[0] != ';' && instr[0] != '#')
-                    addr++;
-            }
-        } else {
-            // This line contains an instruction, increment address
-            addr++;
+// Helper function to parse register number (e.g., "R5" -> 5)
+static uint8_t parseRegister(const char* reg) {
+    if (reg[0] == 'R') {
+        int reg_num = atoi(reg + 1);
+        if (reg_num >= 0 && reg_num < 64) {  // Check register bounds
+            return (uint8_t)reg_num;
         }
     }
-    
-    // Reset the file pointer to the beginning for the second pass
-    rewind(fp);
+    return 0xFF; // Invalid register
 }
 
-// Second pass: assemble instructions
-static void assemble_instructions(FILE *fp) {
-    char line[MAX_LINE_LENGTH];
-    uint16_t addr = 0;
+// Helper function to parse immediate value
+static int8_t parseImmediate(const char* imm, int is_shift) {
+    int value = atoi(imm);
     
-    while (fgets(line, MAX_LINE_LENGTH, fp)) {
-        char *l = trim(line);
+    if (is_shift) {
+        // For shift instructions, ensure positive value and within bounds
+        if (value < 0 || value > 7) {  // Shift amount should be 0-7
+            printf("Error: Shift amount must be between 0 and 7\n");
+            return 0xFF;  // Invalid shift amount
+        }
+        return (int8_t)value;
+    } else {
+        // For other instructions, allow signed values (-32 to 31)
+        if (value < -32 || value > 31) {
+            printf("Error: Immediate value must be between -32 and 31\n");
+            return 0xFF;  // Invalid immediate
+        }
+        return (int8_t)value;
+    }
+}
+
+// Helper function to create 16-bit instruction
+static uint16_t createInstruction(uint8_t opcode, uint8_t operand1, int8_t operand2) {
+    // Format: 4 bits opcode, 6 bits operand1, 6 bits operand2
+    // For operand2, we need to handle signed values properly
+    uint8_t operand2_unsigned;
+    
+    if (operand2 < 0) {
+        // Convert negative value to 2's complement
+        operand2_unsigned = (uint8_t)((int8_t)operand2 & 0x3F);  // Keep only 6 bits
+    } else {
+        operand2_unsigned = (uint8_t)operand2;
+    }
+    
+    return ((uint16_t)opcode << 12) | ((uint16_t)operand1 << 6) | operand2_unsigned;
+}
+
+// Helper function to parse a single instruction line
+static uint16_t parseInstructionLine(const char* line) {
+    char op[10];
+    char op1[10];
+    char op2[10];
+    
+    // Skip empty lines and comments
+    if (line[0] == '\n' || line[0] == '#' || line[0] == '\0') {
+        return 0;
+    }
+    
+    // Parse the instruction components
+    if (sscanf(line, "%s %s %s", op, op1, op2) != 3) {
+        printf("Error: Invalid instruction format: %s\n", line);
+        return 0;
+    }
+    
+    // Get opcode and check if it's a shift instruction
+    int is_shift = 0;
+    uint8_t opcode = getOpcode(op, &is_shift);
+    if (opcode == 0xFF) {
+        printf("Error: Invalid operation: %s\n", op);
+        return 0;
+    }
+    
+    // Parse operands based on instruction type
+    uint8_t operand1;
+    int8_t operand2;
+    
+    // Handle different instruction formats
+    if (strcmp(op, "MOVI") == 0 || strcmp(op, "BEQZ") == 0 || 
+        strcmp(op, "ANDI") == 0 || strcmp(op, "SAL") == 0 || 
+        strcmp(op, "SAR") == 0) {
+        // Format: OP R1, IMM
+        operand1 = parseRegister(op1);
+        operand2 = parseImmediate(op2, is_shift);
+    } else if (strcmp(op, "LDR") == 0 || strcmp(op, "STR") == 0) {
+        // Format: OP R1, ADDR
+        operand1 = parseRegister(op1);
+        operand2 = parseImmediate(op2, 0);  // Address is signed
+    } else if (strcmp(op, "BR") == 0) {
+        // Format: BR R1, R2
+        operand1 = parseRegister(op1);
+        operand2 = parseRegister(op2);
+    } else {
+        // Format: OP R1, R2 (ADD, SUB, MUL, EOR)
+        operand1 = parseRegister(op1);
+        operand2 = parseRegister(op2);
+    }
+    
+    // Validate operands - use uint8_t for comparison since that's what parseRegister returns
+    uint8_t operand1_check = parseRegister(op1);
+    int8_t operand2_check = operand2;
+    
+    if (operand1_check == 0xFF || (uint8_t)operand2_check == 0xFF) {
+        printf("Error: Invalid operands in instruction: %s\n", line);
+        return 0;
+    }
+    
+    // Create and return the 16-bit instruction
+    return createInstruction(opcode, operand1, operand2);
+}
+
+/**
+ * Parses a text file containing instructions and stores them in instruction memory.
+ * @param filename: Path to the input text file
+ * @return: Number of instructions successfully parsed and stored
+ */
+int parseInstructionFile(const char* filename) {
+    FILE* file = fopen(filename, "r");
+    if (!file) {
+        printf("Error: Could not open file %s\n", filename);
+        return -1;
+    }
+    
+    char line[256];
+    int instructionCount = 0;
+    uint16_t address = 0;
+    
+    // Read file line by line
+    while (fgets(line, sizeof(line), file)) {
+        // Remove newline character
+        line[strcspn(line, "\n")] = 0;
         
         // Skip empty lines and comments
-        if (l[0] == '\0' || l[0] == ';' || l[0] == '#')
+        if (line[0] == '\n' || line[0] == '#' || line[0] == '\0') {
             continue;
-            
-        char *instr_line = l;
-        
-        // If it's a label, get the instruction after it (if any)
-        if (is_label(l)) {
-            instr_line = strchr(l, ':');
-            if (!instr_line || instr_line[1] == '\0' || instr_line[1] == ';' || instr_line[1] == '#')
-                continue; // No instruction after label
-                
-            instr_line++; // Skip the colon
-            instr_line = trim(instr_line);
         }
         
         // Parse the instruction
-        char instr[16] = {0};
-        char operands[MAX_LINE_LENGTH] = {0};
-        
-        // Split into instruction and operands
-        char *space = strchr(instr_line, ' ');
-        if (space) {
-            strncpy(instr, instr_line, space - instr_line);
-            instr[space - instr_line] = '\0';
-            strcpy(operands, trim(space));
-        } else {
-            strcpy(instr, instr_line);
-            operands[0] = '\0';
+        uint16_t instruction = parseInstructionLine(line);
+        if (instruction != 0) {
+            // Store in instruction memory
+            writeToMemory(address++, instruction, 0);
+            instructionCount++;
+            
+            // Print the parsed instruction for debugging
+            printf("[PARSER] %s -> 0x%04X\n", line, instruction);
         }
-        
-        // Convert instruction to uppercase
-        for (int i = 0; instr[i]; i++) {
-            instr[i] = toupper(instr[i]);
-        }
-        
-        uint16_t opcode = 0;
-        
-        // NOP instruction
-        if (strcmp(instr, "NOP") == 0) {
-            opcode = 0xFFFF; // NOP is 0xFFFF
-        } 
-        // R-type instructions
-        else if (strcmp(instr, "ADD") == 0 || strcmp(instr, "SUB") == 0 || 
-                 strcmp(instr, "MUL") == 0 || strcmp(instr, "EOR") == 0) {
-            
-            // Parse operands
-            char *token;
-            char *rd_str = NULL, *rs1_str = NULL, *rs2_str = NULL;
-            char temp_operands[MAX_LINE_LENGTH];
-            strcpy(temp_operands, operands);
-            
-            // Split operands by commas
-            token = strtok(temp_operands, ",");
-            if (token) rd_str = trim(token);
-            
-            token = strtok(NULL, ",");
-            if (token) rs1_str = trim(token);
-            
-            token = strtok(NULL, ",");
-            if (token) rs2_str = trim(token);
-            
-            int rd = rd_str ? get_register_number(rd_str) : 0;
-            int rs1 = rs1_str ? get_register_number(rs1_str) : 0;
-            int rs2 = rs2_str ? get_register_number(rs2_str) : 0;
-            
-            // Encode opcode
-            if (strcmp(instr, "ADD") == 0) {
-                opcode = 0;
-            } else if (strcmp(instr, "SUB") == 0) {
-                opcode = 1;
-            } else if (strcmp(instr, "MUL") == 0) {
-                opcode = 2;
-            } else if (strcmp(instr, "EOR") == 0) {
-                opcode = 4;
-            }
-            
-            // Format for R-type: [4-bit opcode][6-bit rd][6-bit rs1][6-bit rs2]
-            opcode = (opcode << 12) | ((rd & 0x3F) << 6) | (rs1 & 0x3F) | ((rs2 & 0x3F) << 0);
-        }
-        // I-type instructions
-        else if (strcmp(instr, "ANDI") == 0 || strcmp(instr, "SAL") == 0 || 
-                 strcmp(instr, "SAR") == 0 || strcmp(instr, "LOAD") == 0 || 
-                 strcmp(instr, "STORE") == 0 || strcmp(instr, "BEQZ") == 0) {
-            
-            // Parse operands
-            char *token;
-            char *rd_str = NULL, *rs1_str = NULL, *rs2_str = NULL, *imm_str = NULL;
-            char temp_operands[MAX_LINE_LENGTH];
-            strcpy(temp_operands, operands);
-            
-            // Split operands by commas
-            token = strtok(temp_operands, ",");
-            
-            if (strcmp(instr, "BEQZ") == 0) {
-                rs1_str = trim(token);
-                
-                token = strtok(NULL, ",");
-                if (token) imm_str = trim(token);
-                
-                // Check if immediate is a label
-                if (imm_str && isalpha(imm_str[0])) {
-                    int label_addr = find_label_address(imm_str);
-                    if (label_addr != -1) {
-                        // Calculate relative address
-                        int16_t offset = label_addr - (addr + 1);
-                        sprintf(imm_str, "%d", offset);
-                    }
-                }
-            } else if (strcmp(instr, "STORE") == 0) {
-                rs1_str = trim(token);
-                
-                token = strtok(NULL, ",");
-                if (token) rs2_str = trim(token);
-                
-                token = strtok(NULL, ",");
-                if (token) imm_str = trim(token);
-            } else {
-                rd_str = trim(token);
-                
-                token = strtok(NULL, ",");
-                if (token) rs1_str = trim(token);
-                
-                token = strtok(NULL, ",");
-                if (token) imm_str = trim(token);
-            }
-            
-            int rd = rd_str ? get_register_number(rd_str) : 0;
-            int rs1 = rs1_str ? get_register_number(rs1_str) : 0;
-            int rs2 = rs2_str ? get_register_number(rs2_str) : 0;
-            int16_t imm = imm_str ? get_immediate(imm_str) : 0;
-            
-            // Encode opcode
-            if (strcmp(instr, "ANDI") == 0) {
-                opcode = 3;
-            } else if (strcmp(instr, "SAL") == 0) {
-                opcode = 5;
-            } else if (strcmp(instr, "SAR") == 0) {
-                opcode = 6;
-            } else if (strcmp(instr, "LOAD") == 0) {
-                opcode = 7;
-            } else if (strcmp(instr, "STORE") == 0) {
-                opcode = 8;
-            } else if (strcmp(instr, "BEQZ") == 0) {
-                opcode = 9;
-            }
-            
-            // Format for I-type: [4-bit opcode][6-bit rd/rs1][6-bit rs1/rs2][8-bit imm]
-            if (strcmp(instr, "STORE") == 0) {
-                opcode = (opcode << 12) | ((rs1 & 0x3F) << 6) | (rs2 & 0x3F) | (imm & 0xFF);
-            } else if (strcmp(instr, "BEQZ") == 0) {
-                opcode = (opcode << 12) | ((rs1 & 0x3F) << 6) | (imm & 0xFF);
-            } else {
-                opcode = (opcode << 12) | ((rd & 0x3F) << 6) | (rs1 & 0x3F) | (imm & 0xFF);
-            }
-        }
-        // JR instruction
-        else if (strcmp(instr, "JR") == 0) {
-            // Parse operands
-            char *token;
-            char *r0_str = NULL, *r1_str = NULL;
-            char temp_operands[MAX_LINE_LENGTH];
-            strcpy(temp_operands, operands);
-            
-            // Split operands by commas
-            token = strtok(temp_operands, ",");
-            if (token) r0_str = trim(token);
-            
-            token = strtok(NULL, ",");
-            if (token) r1_str = trim(token);
-            
-            int r0 = r0_str ? get_register_number(r0_str) : 0;
-            int r1 = r1_str ? get_register_number(r1_str) : 0;
-            
-            // Encode JR (opcode 10)
-            opcode = (10 << 12) | ((r0 & 0x3F) << 6) | (r1 & 0x3F);
-        }
-        
-        // Store the assembled instruction
-        instr_mem[addr++] = opcode;
     }
     
-    // Set global PC to 0
-    PC = 0;
+    // Add halt instruction (0xFFFF) at the end
+    writeToMemory(address, 0xFFFF, 0);
+    printf("[PARSER] HALT -> 0xFFFF\n");
+    
+    fclose(file);
+    return instructionCount;
 }
 
-void load_program(const char *filename) {
-    FILE *fp = fopen(filename, "r");
-    if (!fp) {
-        printf("Error: Could not open file %s\n", filename);
-        exit(1);
+/**
+ * Prints the binary representation of an instruction
+ * @param instruction: 16-bit instruction to print
+ */
+void printInstructionBinary(uint16_t instruction) {
+    printf("Binary: ");
+    for (int i = 15; i >= 0; i--) {
+        printf("%d", (instruction >> i) & 1);
+        if (i == 12 || i == 6) printf(" "); // Add spaces between fields
     }
-    
-    // Reset label count
-    label_count = 0;
-    
-    // First pass: collect labels
-    collect_labels(fp);
-    
-    // Second pass: assemble instructions
-    assemble_instructions(fp);
-    
-    fclose(fp);
-} 
+    printf("\n");
+}
+

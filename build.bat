@@ -1,15 +1,42 @@
 @echo off
-echo Building simulator3...
+setlocal
 
-if not exist "bin" mkdir bin
+REM Check if mingw32-make is available
+where mingw32-make >nul 2>nul
+if %ERRORLEVEL% neq 0 (
+    echo Error: mingw32-make not found in PATH
+    echo Please install MinGW and add it to your PATH
+    echo You can download MinGW from: https://sourceforge.net/projects/mingw/
+    echo After installation, add the MinGW bin directory to your PATH
+    echo Typical path: C:\MinGW\bin
+    pause
+    exit /b 1
+)
 
-gcc -std=c11 -Wall -Wextra src\main.c src\parser.c src\alu.c src\memory.c src\pipeline.c src\utils.c -o simulator3.exe
+REM If no arguments provided, show help
+if "%~1"=="" (
+    echo Usage: build.bat [command]
+    echo Commands:
+    echo   build  - Build the processor executable
+    echo   run    - Build and run the processor
+    echo   clean  - Remove all build files
+    echo   help   - Show this help message
+    exit /b 0
+)
 
-if %ERRORLEVEL% EQU 0 (
-    echo Build successful!
-    echo To run with test cases:
-    echo simulator3.exe tests\sample1.asm 50
-    echo simulator3.exe tests\sample2.asm 50
+REM Execute the requested command
+if "%~1"=="build" (
+    mingw32-make all
+) else if "%~1"=="run" (
+    mingw32-make run
+) else if "%~1"=="clean" (
+    mingw32-make clean
+) else if "%~1"=="help" (
+    mingw32-make help
 ) else (
-    echo Build failed!
-) 
+    echo Unknown command: %~1
+    echo Use 'build.bat help' to see available commands
+    exit /b 1
+)
+
+endlocal 

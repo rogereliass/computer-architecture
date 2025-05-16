@@ -1,123 +1,83 @@
-#include "memory.h"
-#include "parser.h"
-#include "pipeline.h"
-#include "utils.h"
+#include "../includes/pipeline.h"
+#include "../includes/memory.h"
+#include "../includes/registers.h"
+#include "../includes/parser.h"
 #include <stdio.h>
-#include <stdlib.h>
 
-// Function to print the final state of the processor
-void dump_processor_state() {
-    int i;
-    
-    // Dump registers
-    printf("\n==== REGISTER DUMP ====\n");
-    for (i = 0; i < 64; i += 4) {
-        printf("R%-2d: 0x%02X  R%-2d: 0x%02X  R%-2d: 0x%02X  R%-2d: 0x%02X\n", 
-               i, (i == 0) ? 0 : GPR[i],         // R0 is always 0
-               i+1, GPR[i+1], 
-               i+2, GPR[i+2], 
-               i+3, GPR[i+3]);
-    }
-    
-    // Dump status register
-    printf("\n==== STATUS REGISTER ====\n");
-    printf("SREG: 0x%02X (", SREG);
-    printf("%c", (SREG & FLAG_C) ? 'C' : '-');
-    printf("%c", (SREG & FLAG_V) ? 'V' : '-');
-    printf("%c", (SREG & FLAG_N) ? 'N' : '-');
-    printf("%c", (SREG & FLAG_S) ? 'S' : '-');
-    printf("%c", (SREG & FLAG_Z) ? 'Z' : '-');
-    printf(")\n");
-    
-    // Dump program counter
-    printf("\n==== PROGRAM COUNTER ====\n");
-    printf("PC: 0x%04X\n", PC);
-    
-    // Dump instruction memory
-    printf("\n==== INSTRUCTION MEMORY DUMP ====\n");
-    for (i = 0; i < 1024; i++) {
-        if (instr_mem[i] != 0 && instr_mem[i] != NOP) {
-            printf("INSTR_MEM[0x%04X]: 0x%04X\n", i, instr_mem[i]);
-        }
-    }
-    
-    // Dump data memory
-    printf("\n==== DATA MEMORY DUMP ====\n");
-    int empty_line = 1;
-    for (i = 0; i < 2048; i++) {
-        if (data_mem[i] != 0) {
-            printf("DATA_MEM[0x%04X]: 0x%02X\n", i, data_mem[i]);
-            empty_line = 0;
-        }
-    }
-    
-    if (empty_line) {
-        printf("(Empty)\n");
-    }
-}
+int main() {
+    // Initialize system components
+    initMemory();
+    initRegisters();
+    initPipeline();
 
-int main(int argc, char **argv) {
-    // Check command line arguments
-    if (argc < 2) {
-        printf("Usage: %s <assembly_file> [max_cycles]\n", argv[0]);
+    // Create a test program file
+    FILE* testFile = fopen("test_program.txt", "w");
+    if (!testFile) {
+        printf("Error: Could not create test program file\n");
         return 1;
     }
-    
-    // Parse max cycles if provided
-    int max_cycles = 100; // Default to 100 cycles as safety
-    if (argc >= 3) {
-        max_cycles = atoi(argv[2]);
-        if (max_cycles <= 0) {
-            printf("Invalid max_cycles value. Using default (100).\n");
-            max_cycles = 100;
-        }
+
+    // Write test instructions to file
+    fprintf(testFile, "BEQZ R1 5\n");
+    fprintf(testFile, "ADD R2 R3\n");
+    fprintf(testFile, "ADD R4 R5\n");
+    fprintf(testFile, "SUB R6 R7\n");
+    fprintf(testFile, "SUB R8 R9\n");
+    fprintf(testFile, "ADD R10 R11\n");
+    fprintf(testFile, "ADD R12 R13\n");
+    fprintf(testFile, "SUB R14 R15\n");
+    fprintf(testFile, "SUB R16 R17\n");
+
+    fclose(testFile);
+
+    // Parse and load the program
+    printf("\n=== Loading Program ===\n");
+    int instructionCount = parseInstructionFile("test_program.txt");
+    if (instructionCount < 0) {
+        printf("Error: Failed to parse program\n");
+        return 1;
     }
-    printf("Using max_cycles: %d\n", max_cycles);
+    printf("Successfully loaded %d instructions\n", instructionCount);
+
+    // Set initial register values for testing
+    printf("\n=== Setting Initial Register Values ===\n");
+    writeRegister(1, 0);   // R1 = 0
+    writeRegister(2, 20);  // R2 = 20
+    writeRegister(3, 30);  // R3 = 30
+    writeRegister(4, 0);   // R4 = 0 (for BEQZ test)
+    writeRegister(5, 8);   // R5 = 8 (for shift test)
+    writeRegister(6, -8);  // R6 = -8 (for arithmetic shift test)
+    writeRegister(7, 0);   // R7 = 0 (for load test)
+    writeRegister(8, 42);  // R8 = 42 (for store test)
+    writeRegister(9, 10);  // R9 = 10 (for branch test)
+    writeRegister(10, 1); // R10 = 10 (for branch test)
+    writeRegister(11, 2); // R11 = 10 (for branch test)
+    writeRegister(12, 3); // R12 = 10 (for branch test)
+    writeRegister(13, 4); // R13 = 10 (for branch test)
+    writeRegister(14, 8); // R14 = 10 (for branch test)
+    writeRegister(15, 7); // R15 = 10 (for branch test)
+    writeRegister(16, 6); // R16 = 10 (for branch test)
+    writeRegister(17, 5); // R17 = 10 (for branch test)
     
-    // Initialize pipeline registers
-    IF_ID if_id = {NOP, 0};
-    ID_EX id_ex = {NOP, 0, 0, 0, 0, 0};
-    EX_WB ex_wb = {NOP, 0, 0, 0, 0};
-    
-    // Load the program
-    load_program(argv[1]);
-    
-    // Initialize control signals
-    int fetch_allowed = 1;
-    int flush = 0;
-    int cycle = 1;
-    
-    // Main simulation loop
-    while ((fetch_allowed || if_id.ir != NOP || id_ex.ir != NOP || ex_wb.ir != NOP) &&
-           (cycle <= max_cycles)) {
-        printf("\n[Cycle %d]\n", cycle);
-        
-        // Execute pipeline stages in reverse order
-        writeback_stage(&ex_wb);
-        execute_stage(&id_ex, &ex_wb, &flush, &fetch_allowed);
-        decode_stage(&if_id, &id_ex);
-        fetch_stage(&if_id, &fetch_allowed);
-        
-        // Handle branch/jump flushes
-        if (flush) {
-            if_id.ir = NOP;
-            id_ex.ir = NOP;
-            flush = 0;
-        }
-        
-        cycle++;
-    }
-    
-    // Check if terminated due to max cycles
-    if (cycle > max_cycles) {
-        printf("\n==== SIMULATION STOPPED: MAXIMUM CYCLES (%d) REACHED ====\n", max_cycles);
-    } else {
-        printf("\n==== SIMULATION COMPLETE ====\n");
-    }
-    printf("Total cycles executed: %d\n", cycle - 1);
-    
-    // Dump final processor state
-    dump_processor_state();
-    
+
+    // Set some initial memory values
+    printf("\n=== Setting Initial Memory Values ===\n");
+    writeToMemory(10, 0x55, 1);  // Data memory[10] = 0x55
+    writeToMemory(20, 0x00, 1);  // Data memory[20] = 0x00
+
+    // Print initial state
+    printf("\n=== Initial State ===\n");
+    printRegisterDump();
+    printMemoryDump();
+
+    // Run the pipeline for a few cycles
+    printf("\n=== Running Pipeline ===\n");
+    while(pipelineCycle());
+
+    // Print final state
+    printf("\n=== Final State ===\n");
+    printRegisterDump();
+    printMemoryDump();
+
     return 0;
-} 
+}
