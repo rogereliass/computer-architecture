@@ -7,35 +7,34 @@ static void update_flags(int8_t result, int8_t a, int8_t b, int is_add) {
     
     // Carry Flag (C) - Check 9th bit (bit 8) of unsigned operation
     if (is_add) {
-        int16_t temp = (int16_t)a + (int16_t)b;
-        if (temp > INT8_MAX || temp < INT8_MIN) setFlag(CARRY_FLAG);
+        clearFlag(CARRY_FLAG);
+        uint8_t ua = (uint8_t)a;
+        uint8_t ub = (uint8_t)b;
+        uint16_t sum = (uint16_t)ua + (uint16_t)ub;
+        if (sum > 0xFF) setFlag(CARRY_FLAG);
     }
     
     // Negative Flag (N) - Set if result is negative (bit 7 is 1)
+    clearFlag(NEGATIVE_FLAG);
     if (result < 0) setFlag(NEGATIVE_FLAG);
-    
+
     // Zero Flag (Z) - Set if result is zero
+    clearFlag(ZERO_FLAG);
     if (result == 0) setFlag(ZERO_FLAG);
-    
+
     // Overflow Flag (V) - For signed operations
+    clearFlag(OVERFLOW_FLAG);
     if (is_add) {
         // For addition: V = 1 if both operands have same sign and result has opposite sign
-        if ((a > 0 && b > 0 && result < 0) ||
-            (a < 0 && b < 0 && result > 0)) {
-            setFlag(OVERFLOW_FLAG);
-        }
+        if ((a > 0 && b > 0 && result < 0) || (a < 0 && b < 0 && result >= 0)) setFlag(OVERFLOW_FLAG);
     } else {
         // For subtraction: V = 1 if operands have different signs and result has same sign as subtrahend
-        if ((a >= 0 && b < 0 && result < 0) ||
-            (a < 0 && b > 0 && result > 0)) {
-            setFlag(OVERFLOW_FLAG);
-        }
+        if ((a >= 0 && b < 0 && result < 0) || (a < 0 && b > 0 && result >= 0)) setFlag(OVERFLOW_FLAG); 
     }
     
     // Sign Flag (S) - S = N ⊕ V
-    if (getFlag(NEGATIVE_FLAG) ^ getFlag(OVERFLOW_FLAG)) {
-        setFlag(SIGN_FLAG);
-    }
+    clearFlag(SIGN_FLAG);
+    if (getFlag(NEGATIVE_FLAG) ^ getFlag(OVERFLOW_FLAG)) setFlag(SIGN_FLAG);
 }
 
 // ================== R-Format Instructions ==================
@@ -67,6 +66,8 @@ void execute_MUL(uint8_t r1, uint8_t r2) {
 
     writeRegister(r1, (int8_t)result);
 
+    clearFlag(NEGATIVE_FLAG);
+    clearFlag(ZERO_FLAG);
     if (result < 0) setFlag(NEGATIVE_FLAG);
     if (result == 0) setFlag(ZERO_FLAG);
 
@@ -80,6 +81,8 @@ void execute_EOR(uint8_t r1, uint8_t r2) {
     int8_t result = a ^ b;
     writeRegister(r1, result);
     // For logical operations, only set N, Z, and S flags
+    clearFlag(NEGATIVE_FLAG);
+    clearFlag(ZERO_FLAG);
     if (result < 0) setFlag(NEGATIVE_FLAG);
     if (result == 0) setFlag(ZERO_FLAG);
     printf("[EX] EOR R%d = R%d ^ R%d -> %d (0x%02X) (SREG: 0x%02X)\n", 
@@ -112,6 +115,8 @@ void execute_ANDI(uint8_t r1, int8_t immediate) {
     int8_t result = a & immediate;  // No need to cast since it's already signed
     writeRegister(r1, result);
     // For logical operations, only set N, Z, and S flags
+    clearFlag(NEGATIVE_FLAG);
+    clearFlag(ZERO_FLAG);
     if (result < 0) setFlag(NEGATIVE_FLAG);
     if (result == 0) setFlag(ZERO_FLAG);
     printf("[EX] ANDI R%d = R%d & %d (0x%02X) -> %d (0x%02X) (SREG: 0x%02X)\n", 
@@ -128,6 +133,8 @@ void execute_SAL(uint8_t r1, uint8_t immediate) {
     }
     writeRegister(r1, result);
     // For shift operations, only set N, Z, and S flags
+    clearFlag(NEGATIVE_FLAG);
+    clearFlag(ZERO_FLAG);
     if (result < 0) setFlag(NEGATIVE_FLAG);
     if (result == 0) setFlag(ZERO_FLAG);
     printf("[EX] SAL R%d = R%d << %d -> %d (0x%02X) (SREG: 0x%02X)\n", 
@@ -146,6 +153,8 @@ void execute_SAR(uint8_t r1, uint8_t immediate) {
     }
     writeRegister(r1, result);
     // For shift operations, only set N, Z, and S flags
+    clearFlag(NEGATIVE_FLAG);
+    clearFlag(ZERO_FLAG);
     if (result < 0) setFlag(NEGATIVE_FLAG);
     if (result == 0) setFlag(ZERO_FLAG);
     printf("[EX] SAR R%d = R%d >> %d -> %d (0x%02X) (SREG: 0x%02X)\n", 
