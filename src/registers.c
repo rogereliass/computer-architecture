@@ -3,7 +3,7 @@
 #include "../includes/registers.h"
 
 // Register Definitions
-uint8_t registers[REGISTER_COUNT];   // General Purpose Registers
+int8_t registers[REGISTER_COUNT];   // General Purpose Registers (signed)
 uint8_t SREG = 0x00;                 // Status Register, initialized to 0
 uint16_t PC = 0x0000;                // Program Counter, initialized to 0
 
@@ -19,12 +19,12 @@ void initRegisters() {
 /**
  * Writes a value to a register.
  * @param regNum: The register number (0 to 63).
- * @param value: The 8-bit value to write.
+ * @param value: The 8-bit signed value to write.
  */
-void writeRegister(uint8_t regNum, uint8_t value) {
+void writeRegister(uint8_t regNum, int8_t value) {
     if (regNum < REGISTER_COUNT) {
         registers[regNum] = value;
-        printf("[REG] R%d = 0x%02X\n", regNum, value);
+        printf("[REG] R%d = %d (0x%02X)\n", regNum, value, (uint8_t)value);
     } else {
         printf("Error: Register number %d out of bounds\n", regNum);
     }
@@ -33,9 +33,9 @@ void writeRegister(uint8_t regNum, uint8_t value) {
 /**
  * Reads the value of a register.
  * @param regNum: The register number (0 to 63).
- * @return: The 8-bit value stored in the register.
+ * @return: The 8-bit signed value stored in the register.
  */
-uint8_t readRegister(uint8_t regNum) {
+int8_t readRegister(uint8_t regNum) {
     if (regNum < REGISTER_COUNT) {
         return registers[regNum];
     } else {
@@ -106,7 +106,7 @@ void setPC(uint16_t address) {
 void printRegisterDump() {
     printf("===== Register Dump =====\n");
     for (int i = 0; i < REGISTER_COUNT; ++i) {
-        printf("R%d: 0x%02X\n", i, registers[i]);
+        printf("R%d: %d (0x%02X)\n", i, registers[i], (uint8_t)registers[i]);
     }
     printf("\n===== SREG =====\n");
     printf("SREG: 0x%02X (C=%d, V=%d, N=%d, S=%d, Z=%d)\n", 

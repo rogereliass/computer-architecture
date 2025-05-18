@@ -8,31 +8,29 @@
 typedef struct {
     const char* op;
     uint8_t opcode;
-    int is_shift;  // Flag to identify shift instructions
 } OpcodeMap;
 
 static const OpcodeMap OPCODE_TABLE[] = {
-    {"ADD",  0, 0},
-    {"SUB",  1, 0},
-    {"MUL",  2, 0},
-    {"MOVI", 3, 0},
-    {"BEQZ", 4, 0},
-    {"ANDI", 5, 0},
-    {"EOR",  6, 0},
-    {"BR",   7, 0},
-    {"SAL",  8, 1},  // Shift instruction
-    {"SAR",  9, 1},  // Shift instruction
-    {"LDR",  10, 0},
-    {"STR",  11, 0}
+    {"ADD",  0},
+    {"SUB",  1},
+    {"MUL",  2},
+    {"MOVI", 3},
+    {"BEQZ", 4},
+    {"ANDI", 5},
+    {"EOR",  6},
+    {"BR",   7},
+    {"SAL",  8},  // Shift instruction
+    {"SAR",  9},  // Shift instruction
+    {"LDR",  10},
+    {"STR",  11}
 };
 
 #define OPCODE_TABLE_SIZE (sizeof(OPCODE_TABLE) / sizeof(OpcodeMap))
 
 // Helper function to get opcode and instruction type
-static uint8_t getOpcode(const char* op, int* is_shift) {
+static uint8_t getOpcode(const char* op) {
     for (size_t i = 0; i < OPCODE_TABLE_SIZE; i++) {
         if (strcmp(op, OPCODE_TABLE[i].op) == 0) {
-            if (is_shift) *is_shift = OPCODE_TABLE[i].is_shift;
             return OPCODE_TABLE[i].opcode;
         }
     }
@@ -54,20 +52,26 @@ static uint8_t parseRegister(const char* reg) {
 static int8_t parseImmediate(const char* imm, int is_shift) {
     int value = atoi(imm);
     
-    if (is_shift) {
+    if (is_shift == 1) {
         // For shift instructions, ensure positive value and within bounds
         if (value < 0 || value > 7) {  // Shift amount should be 0-7
             printf("Error: Shift amount must be between 0 and 7\n");
             return 0xFF;  // Invalid shift amount
         }
-        return (int8_t)value;
-    } else {
+        return (uint8_t)value;
+    } else if (is_shift == 0) {
         // For other instructions, allow signed values (-32 to 31)
         if (value < -32 || value > 31) {
             printf("Error: Immediate value must be between -32 and 31\n");
             return 0xFF;  // Invalid immediate
         }
         return (int8_t)value;
+    } else{
+        if (value < 0 || value > 63) {
+            printf("Error: Immediate value must be between 0 and 63\n");
+            return 0xFF;  // Invalid immediate
+        }
+        return (uint8_t)value;
     }
 }
 
@@ -105,8 +109,8 @@ static uint16_t parseInstructionLine(const char* line) {
     }
     
     // Get opcode and check if it's a shift instruction
-    int is_shift = 0;
-    uint8_t opcode = getOpcode(op, &is_shift);
+    //int is_shift = 0;
+    uint8_t opcode = getOpcode(op);
     if (opcode == 0xFF) {
         printf("Error: Invalid operation: %s\n", op);
         return 0;
@@ -118,15 +122,17 @@ static uint16_t parseInstructionLine(const char* line) {
     
     // Handle different instruction formats
     if (strcmp(op, "MOVI") == 0 || strcmp(op, "BEQZ") == 0 || 
-        strcmp(op, "ANDI") == 0 || strcmp(op, "SAL") == 0 || 
-        strcmp(op, "SAR") == 0) {
+        strcmp(op, "ANDI") == 0) {
         // Format: OP R1, IMM
         operand1 = parseRegister(op1);
-        operand2 = parseImmediate(op2, is_shift);
+        operand2 = parseImmediate(op2, 0);
+    } else if(strcmp(op, "SAL") == 0 || strcmp(op, "SAR") == 0) {
+        operand1 = parseRegister(op1);
+        operand2 = parseImmediate(op2, 1);
     } else if (strcmp(op, "LDR") == 0 || strcmp(op, "STR") == 0) {
         // Format: OP R1, ADDR
         operand1 = parseRegister(op1);
-        operand2 = parseImmediate(op2, 0);  // Address is signed
+        operand2 = parseImmediate(op2, 2); 
     } else if (strcmp(op, "BR") == 0) {
         // Format: BR R1, R2
         operand1 = parseRegister(op1);

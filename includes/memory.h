@@ -9,7 +9,7 @@
 
 // Memory Arrays
 extern uint16_t instructionMemory[INSTRUCTION_MEMORY_SIZE]; // 16-bit instruction memory
-extern uint8_t dataMemory[DATA_MEMORY_SIZE];                // 8-bit data memory
+extern int8_t dataMemory[DATA_MEMORY_SIZE];                // 8-bit data memory
 
 // Function Prototypes
 void initMemory();

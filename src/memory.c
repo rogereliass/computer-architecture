@@ -4,13 +4,16 @@
 
 // Memory Arrays
 uint16_t instructionMemory[INSTRUCTION_MEMORY_SIZE];
-uint8_t dataMemory[DATA_MEMORY_SIZE];
+int8_t dataMemory[DATA_MEMORY_SIZE];
 
 /**
  * Initializes the Instruction and Data memory to zero.
  */
 void initMemory() {
-    memset(instructionMemory, 0, sizeof(instructionMemory));
+    for (int i = 0; i < INSTRUCTION_MEMORY_SIZE; i++) {
+        instructionMemory[i] = 0xFFFF;
+    }
+    // memset(instructionMemory, 0, sizeof(instructionMemory));
     memset(dataMemory, 0, sizeof(dataMemory));
 }
 
@@ -23,7 +26,7 @@ void initMemory() {
 void writeToMemory(uint16_t address, uint16_t value, int isDataMemory) {
     if (isDataMemory) {
         if (address < DATA_MEMORY_SIZE) {
-            dataMemory[address] = (uint8_t)value;
+            dataMemory[address] = (int8_t)value;
             printf("[MEM] Data Memory [0x%04X] = 0x%02X\n", address, value);
         } else {
             printf("Error: Data Memory Address out of bounds\n");
@@ -68,11 +71,11 @@ uint16_t readFromMemory(uint16_t address, int isDataMemory) {
 void printMemoryDump() {
     printf("===== Instruction Memory Dump =====\n");
     for (int i = 0; i < INSTRUCTION_MEMORY_SIZE; ++i) {
-        if (instructionMemory[i] != 0) {
+        if (instructionMemory[i] != 0xFFFF) {
             printf("Addr [%d] : 0x%04X\n", i, instructionMemory[i]);
         }
     }
-    
+    printf("\n"); 
     printf("\n===== Data Memory Dump =====\n");
     for (int i = 0; i < DATA_MEMORY_SIZE; ++i) {
         if (dataMemory[i] != 0) {

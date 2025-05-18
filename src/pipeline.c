@@ -67,21 +67,39 @@ void decodeStage() {
 
     // R-Format or I-Format
     if (ID_EX.opcode == 0 || ID_EX.opcode == 1 || ID_EX.opcode == 2 || 
-    ID_EX.opcode == 6 || ID_EX.opcode == 7) {
+        ID_EX.opcode == 6 || ID_EX.opcode == 7) {
         // R-Format
         ID_EX.r2 = instr & 0x3F;
         ID_EX.isImmediate = false;
     } else {
         // I-Format
-        ID_EX.r2 = instr & 0x3F;
+        uint8_t imm = instr & 0x3F;
+        
+        // Special handling for STR and LDR - addresses should be unsigned
+        if (ID_EX.opcode == 10 || ID_EX.opcode == 11) {  // LDR or STR
+            ID_EX.r2 = imm;  // Keep address as unsigned
+        } else {
+            // For other immediates, handle signed values
+            if (imm & 0x20) {  // If bit 5 is set (negative number)
+                ID_EX.r2 = imm | 0xC0;  // Sign extend to 8 bits
+            } else {
+                ID_EX.r2 = imm;  // Positive number, no sign extension needed
+            }
+        }
         ID_EX.isImmediate = true;
     }
 
     ID_EX.nextPC = IF_ID.nextPC;
     ID_EX.valid = true;
 
-    printf("[ID] Decoded - Opcode: %d, R1: %d, R2/IMM: %d, Immediate? %d\n",
-           ID_EX.opcode, ID_EX.r1, ID_EX.r2, ID_EX.isImmediate);
+    // Print the decoded value appropriately based on instruction type
+    if (ID_EX.opcode == 10 || ID_EX.opcode == 11) {
+        printf("[ID] Decoded - Opcode: %d, R1: %d, Address: %d (0x%02X), Immediate? %d\n",
+               ID_EX.opcode, ID_EX.r1, ID_EX.r2, ID_EX.r2, ID_EX.isImmediate);
+    } else {
+        printf("[ID] Decoded - Opcode: %d, R1: %d, R2/IMM: %d (0x%02X), Immediate? %d\n",
+               ID_EX.opcode, ID_EX.r1, (int8_t)ID_EX.r2, ID_EX.r2, ID_EX.isImmediate);
+    }
 }
 
 void executeStage() {
