@@ -59,6 +59,7 @@ void clearAllFlags() {
 void setFlag(uint8_t flag) {
     if (flag <= ZERO_FLAG) {  // Only allow flags 0-4
         SREG |= (1 << flag);
+        printf("Setting flag %d (0x%02X)\n", flag, (uint8_t)flag);
     }
 }
 
@@ -69,6 +70,7 @@ void setFlag(uint8_t flag) {
 void clearFlag(uint8_t flag) {
     if (flag <= ZERO_FLAG) {  // Only allow flags 0-4
         SREG &= ~(1 << flag);
+        printf("Clearing flag %d (0x%02X)\n", flag, (uint8_t)flag);
     }
 }
 
@@ -88,6 +90,7 @@ uint8_t getFlag(uint8_t flag) {
  * Increments the Program Counter by 1.
  */
 void incrementPC() {
+    printf("Incrementing PC to %d (0x%04X)\n", PC + 1, (uint16_t)(PC + 1));
     PC++;
 }
 
@@ -96,7 +99,7 @@ void incrementPC() {
  * @param address: The address to set the PC to.
  */
 void setPC(uint16_t address) {
-    //printf("Setting PC to 0x%04X from %d\n", address, PC);
+    printf("Setting PC to %d (0x%04X)\n", address, (uint16_t)address);
     PC = address;
 }
 

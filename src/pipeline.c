@@ -51,7 +51,7 @@ void fetchStage() {
         IF_ID.valid = true;
         incrementPC();
 
-        printf("[IF] Fetched Instruction: 0x%04X | Next PC: 0x%04X\n", instruction, IF_ID.nextPC);
+        printf("[IF] Fetched Instruction: %d (0x%04X) | Next PC: %d (0x%04X)\n", instruction, (uint16_t)instruction, IF_ID.nextPC, (uint16_t)IF_ID.nextPC);
     }
 }
 
@@ -170,11 +170,11 @@ bool pipelineCycle() {
  */
  void printPipelineState() {
     printf("==== Pipeline State ====\n");
-    printf("IF/ID -> Instruction: 0x%04X | Next PC: 0x%04X | Valid: %d\n", 
-           IF_ID.instruction, IF_ID.nextPC, IF_ID.valid);
-    printf("ID/EX -> Opcode: %d | R1: %d | R2/Imm: %d | Format: %s | Next PC: 0x%04X | Valid: %d\n",
+    printf("IF/ID -> Instruction: %d (0x%04X) | Next PC: %d (0x%04X) | Valid: %d\n", 
+           IF_ID.instruction, (uint16_t)IF_ID.instruction, IF_ID.nextPC, (uint16_t)IF_ID.nextPC, IF_ID.valid);
+    printf("ID/EX -> Opcode: %d | R1: %d | R2/Imm: %d | Format: %s | Next PC: %d (0x%04X) | Valid: %d\n",
            ID_EX.opcode, ID_EX.r1, ID_EX.r2,
            ID_EX.isImmediate ? "I-Format" : "R-Format",
-           ID_EX.nextPC, ID_EX.valid);
+           ID_EX.nextPC, (uint16_t)ID_EX.nextPC, ID_EX.valid);
     printf("========================\n\n");
 }

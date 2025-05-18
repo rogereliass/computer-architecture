@@ -92,7 +92,7 @@ void execute_EOR(uint8_t r1, uint8_t r2) {
 void execute_BR(uint8_t r1, uint8_t r2) {
     uint16_t newPC = (readRegister(r1) << 8) | readRegister(r2);
     handleBranchFlush(newPC);
-    printf("[EX] BR PC = R%d || R%d -> 0x%04X\n", r1, r2, newPC);
+    printf("[EX] BR PC = R%d || R%d -> %d (0x%04X)\n", r1, r2, newPC, (uint16_t)newPC);
 }
 
 // ================== I-Format Instructions ==================
@@ -164,11 +164,11 @@ void execute_SAR(uint8_t r1, uint8_t immediate) {
 void execute_LDR(uint8_t r1, uint8_t address) {
     uint8_t value = readFromMemory((uint16_t)address, 1);
     writeRegister(r1, (int8_t)value);  // Cast to signed
-    printf("[EX] LDR R%d = MEM[0x%02X] -> %d (0x%02X)\n", r1, address, (int8_t)value, value);
+    printf("[EX] LDR R%d = MEM[%d (0x%02X)] -> %d (0x%02X)\n", r1, address, (uint8_t)address, (int8_t)value, value);
 }
 
 void execute_STR(uint8_t r1, uint8_t address) {
     int8_t value = readRegister(r1);
     writeToMemory((uint16_t)address, (uint8_t)value, 1);  // Cast to unsigned for memory
-    printf("[EX] STR MEM[0x%02X] = R%d -> %d (0x%02X)\n", address, r1, value, (uint8_t)value);
+    printf("[EX] STR MEM[%d (0x%02X)] = R%d -> %d (0x%02X)\n", address, (uint8_t)address, r1, value, (uint8_t)value);
 }

@@ -190,7 +190,7 @@ int parseInstructionFile(const char* filename) {
             instructionCount++;
             
             // Print the parsed instruction for debugging
-            printf("[PARSER] %s -> 0x%04X\n", line, instruction);
+            printf("[PARSER] %s -> %d (0x%04X)\n", line, instruction, (uint16_t)instruction);
         }
     }
     

@@ -21,7 +21,7 @@ void flushPipeline() {
 void handleBranchFlush(uint16_t targetPC) {
     flushPipeline();
     setPC(targetPC);
-    printf("[CONTROL] Branch Taken -> Redirecting to 0x%04X\n", targetPC);
+    printf("[CONTROL] Branch Taken -> Redirecting to %d (0x%04X)\n", targetPC, (uint16_t)targetPC);
 }
 
 /**
