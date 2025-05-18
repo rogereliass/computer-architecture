@@ -18,39 +18,39 @@ int main() {
     }
 
     // Write test instructions to file
-    // fprintf(testFile, "MOVI R1 10\n");
-    // fprintf(testFile, "MOVI R2 5\n");
-    // fprintf(testFile, "MOVI R3 -3\n");
-    // fprintf(testFile, "MOVI R4 2\n");
-    // fprintf(testFile, "MOVI R5 0\n");
+    fprintf(testFile, "MOVI R1 10\n");
+    fprintf(testFile, "MOVI R2 5\n");
+    fprintf(testFile, "MOVI R3 -3\n");
+    fprintf(testFile, "MOVI R4 2\n");
+    fprintf(testFile, "MOVI R5 0\n");
 
-    // fprintf(testFile, "ADD R1 R2\n");
-    // fprintf(testFile, "SUB R1 R3\n");
-    // fprintf(testFile, "MUL R1 R4\n");
+    fprintf(testFile, "ADD R1 R2\n");
+    fprintf(testFile, "SUB R1 R3\n");
+    fprintf(testFile, "MUL R1 R4\n");
 
-    // fprintf(testFile, "ANDI R1 15\n");
-    // fprintf(testFile, "EOR R1 R2\n");
+    fprintf(testFile, "ANDI R1 15\n");
+    fprintf(testFile, "EOR R1 R2\n");
 
-    // fprintf(testFile, "BEQZ R5 3\n");
-    // fprintf(testFile, "MOVI R1 30\n");
-    // fprintf(testFile, "MOVI R2 30\n");
-    // fprintf(testFile, "MOVI R3 30\n");
-    // fprintf(testFile, "MOVI R6 -8\n");
+    fprintf(testFile, "BEQZ R5 3\n");
+    fprintf(testFile, "MOVI R1 30\n");
+    fprintf(testFile, "MOVI R2 30\n");
+    fprintf(testFile, "MOVI R3 30\n");
+    fprintf(testFile, "MOVI R6 -8\n");
 
-    // // fprintf(testFile, "MOVI R9 1\n");
-    // // fprintf(testFile, "MOVI R10 1\n");
-    // // fprintf(testFile, "BR R9 R10\n");
+    // fprintf(testFile, "MOVI R9 1\n");
+    // fprintf(testFile, "MOVI R10 1\n");
+    // fprintf(testFile, "BR R9 R10\n");
 
-    // fprintf(testFile, "SAL R6 1\n");
-    // fprintf(testFile, "SAR R6 2\n");
+    fprintf(testFile, "SAL R6 1\n");
+    fprintf(testFile, "SAR R6 2\n");
 
-    // fprintf(testFile, "MOVI R7 31\n");
-    // fprintf(testFile, "STR R7 50\n");
-    // fprintf(testFile, "LDR R8 50\n");
+    fprintf(testFile, "MOVI R7 31\n");
+    fprintf(testFile, "STR R7 50\n");
+    fprintf(testFile, "LDR R8 50\n");
 
     // fprintf(testFile, "MOVI R1 31\n");
     // fprintf(testFile, "MOVI R2 1\n");
-    fprintf(testFile, "MUL R1 R2\n");
+    // fprintf(testFile, "MUL R1 R2\n");
     fclose(testFile);
 
     // Parse and load the program
@@ -63,10 +63,10 @@ int main() {
     printf("Successfully loaded %d instructions\n", instructionCount);
 
     // Set initial register values for testing
-    printf("\n=== Setting Initial Register Values ===\n");
-    writeRegister(1, 0);   // R1 = 0
-    writeRegister(2, 9);  // R2 = 20
-    setFlag(ZERO_FLAG);
+    // printf("\n=== Setting Initial Register Values ===\n");
+    // writeRegister(1, 0);   // R1 = 0
+    // writeRegister(2, 9);  // R2 = 20
+    // setFlag(ZERO_FLAG);
     // writeRegister(3, 30);  // R3 = 30
     // writeRegister(4, 0);   // R4 = 0 (for BEQZ test)
     // writeRegister(5, 8);   // R5 = 8 (for shift test)

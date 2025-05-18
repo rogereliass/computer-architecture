@@ -112,9 +112,9 @@ void printRegisterDump() {
         printf("R%d: %d (0x%02X)\n", i, registers[i], (uint8_t)registers[i]);
     }
     printf("\n===== SREG =====\n");
-    printf("SREG: 0x%02X (C=%d, V=%d, N=%d, S=%d, Z=%d)\n", 
-           SREG, getFlag(CARRY_FLAG), getFlag(OVERFLOW_FLAG), 
+    printf("SREG:%d (0x%02X) (C=%d, V=%d, N=%d, S=%d, Z=%d)\n", 
+           SREG, (uint8_t)SREG,getFlag(CARRY_FLAG), getFlag(OVERFLOW_FLAG), 
            getFlag(NEGATIVE_FLAG), getFlag(SIGN_FLAG), getFlag(ZERO_FLAG));
     printf("\n===== Program Counter =====\n");
-    printf("PC: 0x%04X\n\n", PC);
+    printf("PC: %d (0x%04X)\n\n", PC, (uint16_t)PC);
 }
