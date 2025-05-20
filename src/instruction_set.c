@@ -45,8 +45,8 @@ void execute_ADD(uint8_t r1, uint8_t r2) {
     int8_t result = a + b;
     writeRegister(r1, result);
     update_flags(result, a, b, 1);  // 1 indicates addition
-    printf("[EX] ADD R%d = R%d + R%d -> %d (0x%02X) (SREG: 0x%02X)\n", 
-           r1, r1, r2, result, (uint8_t)result, SREG);
+    printf("[EX] ADD R%d = R%d + R%d -> %d (0x%02X) (SREG: %d 0x%02X)\n", 
+           r1, r1, r2, result, (uint8_t)result, SREG, SREG);
 }
 
 void execute_SUB(uint8_t r1, uint8_t r2) {

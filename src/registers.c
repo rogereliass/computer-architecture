@@ -57,7 +57,7 @@ void clearAllFlags() {
  * @param flag: The bit position of the flag to set.
  */
 void setFlag(uint8_t flag) {
-    if (flag <= ZERO_FLAG) {  // Only allow flags 0-4
+    if (flag <= CARRY_FLAG) {  // Only allow flags 0-4
         SREG |= (1 << flag);
         printf("Setting flag %d (0x%02X)\n", flag, (uint8_t)flag);
     }
@@ -68,7 +68,7 @@ void setFlag(uint8_t flag) {
  * @param flag: The bit position of the flag to clear.
  */
 void clearFlag(uint8_t flag) {
-    if (flag <= ZERO_FLAG) {  // Only allow flags 0-4
+    if (flag <= CARRY_FLAG) {  // Only allow flags 0-4
         SREG &= ~(1 << flag);
         printf("Clearing flag %d (0x%02X)\n", flag, (uint8_t)flag);
     }
@@ -80,7 +80,7 @@ void clearFlag(uint8_t flag) {
  * @return: 1 if the flag is set, 0 otherwise.
  */
 uint8_t getFlag(uint8_t flag) {
-    if (flag <= ZERO_FLAG) {  // Only allow flags 0-4
+    if (flag <= CARRY_FLAG) {  // Only allow flags 0-4
         return (SREG >> flag) & 1;
     }
     return 0;

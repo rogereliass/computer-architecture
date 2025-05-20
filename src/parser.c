@@ -147,10 +147,10 @@ static uint16_t parseInstructionLine(const char* line) {
     uint8_t operand1_check = parseRegister(op1);
     int8_t operand2_check = operand2;
     
-    if (operand1_check == 0xFF || (uint8_t)operand2_check == 0xFF) {
-        printf("Error: Invalid operands in instruction: %s\n", line);
-        return 0;
-    }
+    // if (operand1_check == 0xFF || (uint8_t)operand2_check == 0xFF) {
+    //     printf("Error: Invalid operands in instruction: %s\n", line);
+    //     return 0;
+    // }
     
     // Create and return the 16-bit instruction
     return createInstruction(opcode, operand1, operand2);

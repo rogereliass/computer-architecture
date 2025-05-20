@@ -7,11 +7,11 @@
 #define REGISTER_COUNT 64
 
 // SREG Flag Positions (Bit Positions)
-#define CARRY_FLAG     0  // Carry Flag
-#define OVERFLOW_FLAG  1  // Overflow Flag
+#define CARRY_FLAG     4  // Carry Flag
+#define OVERFLOW_FLAG  3  // Overflow Flag
 #define NEGATIVE_FLAG  2  // Negative Flag
-#define SIGN_FLAG      3  // Sign Flag
-#define ZERO_FLAG      4  // Zero Flag
+#define SIGN_FLAG      1  // Sign Flag
+#define ZERO_FLAG      0  // Zero Flag
 
 // Register Declarations
 extern int8_t registers[REGISTER_COUNT];  // 64 General Purpose Registers (signed)
